@@ -9,29 +9,34 @@ import base64
 
 app = Flask(__name__)
 
-# ======== 1. Load Models Safely ========
-# Define the directory containing the models
-model_dir = os.path.join(r'C:', 'Users', 'nitin sharma', 'Downloads', 'project', 'model')
+# ======== 1. Verify and Load Models Safely ========
+def load_model(model_dir, model_filename):
+    """ Function to load a model safely with error handling. """
+    model_path = os.path.join(model_dir, model_filename)
 
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f"Model file '{model_filename}' not found in the directory: {model_dir}\n"
+            f"Please ensure the file exists and the path is correct."
+        )
+    try:
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+        print(f"Model '{model_filename}' loaded successfully!")
+        return model
+    except Exception as e:
+        raise RuntimeError(f"Failed to load model '{model_filename}': {e}")
+
+# Define the directory containing the models (use raw strings to avoid issues with backslashes)
+MODEL_DIR = r'C:\Users\nitin sharma\Downloads\project\model'
+
+# Load the models
 try:
-    # Load the pre-trained XGBoost models
-    model_open_path = os.path.join(model_dir, 'xgb_open.pkl')
-    model_close_path = os.path.join(model_dir, 'xgb_close.pkl')
-
-    with open(model_open_path, 'rb') as f:
-        model_open = pickle.load(f)
-
-    with open(model_close_path, 'rb') as f:
-        model_close = pickle.load(f)
-
-    print("Models loaded successfully!")
-
-except FileNotFoundError as e:
-    print(f"Error loading models: {e}")
-    raise SystemExit(f"Model files not found. Ensure 'xgb_open.pkl' and 'xgb_close.pkl' are in the directory: {model_dir}")
-except Exception as e:
-    print(f"Unexpected error: {e}")
-    raise SystemExit("An unexpected error occurred while loading models.")
+    model_open = load_model(MODEL_DIR, 'xgb_open.pkl')
+    model_close = load_model(MODEL_DIR, 'xgb_close.pkl')
+except (FileNotFoundError, RuntimeError) as e:
+    print(e)
+    raise SystemExit("Critical Error: Models could not be loaded. Exiting the application.")
 
 # ======== 2. Home Route ========
 @app.route('/')
@@ -130,9 +135,9 @@ def predict():
             )
 
         except Exception as e:
-            return jsonify({"error": f"An error occurred: {e}"})
+            return jsonify({"error": f"An error occurred: {e}"}), 500
     else:
-        return jsonify({"error": "Invalid file format. Please upload a CSV file."})
+        return jsonify({"error": "Invalid file format. Please upload a CSV file."}), 400
 
 # ======== 4. Run the Flask App ========
 if __name__ == '__main__':
